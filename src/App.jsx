@@ -1,125 +1,121 @@
-import React from "react";
-import ReactDOM from "react-dom";
-import Header from "./componetns/Header";
-import Todo from "./componetns/Todo";
-import todos from "./todos";
-import Form from "./componetns/Form";
+import React from 'react';
+import ReactDOM from 'react-dom';
+import axios from "axios";
 
-const title = React.createElement('h1', null, 'React Todo');
-const subtitle = React.createElement('p', {
-  className: 'subtitle'
-}, 'Это мое первое приложение на реакт2');
+import todos from './todos';
+import Header from './components/Header';
+import Todo from './components/Todo';
+import Form from './components/Form';
 
-const container = React.createElement('div', null, title, subtitle);
+class App extends React.Component {
+    constructor(props) {
+        super(props);
 
-class App extends React.Component{
-    constructor(props){
+        this.state = {
+            todos: []
+        };
 
-      super(props);
-
-      this.state={
-        todos:this.props.initialData
-      }
-
-      this.handleStatusChange=this.handleStatusChange.bind(this);
-      this.handleDelete=this.handleDelete.bind(this);
-      this.handleAdd=this.handleAdd.bind(this);
-      this.handleEdit=this.handleEdit.bind(this);
-
+        this.handleAdd = this.handleAdd.bind(this);
+        this.handleDelete = this.handleDelete.bind(this);
+        this.handleToggle = this.handleToggle.bind(this);
+        this.handleEdit = this.handleEdit.bind(this);
     }
 
-    nextId(){
-      this._nextId=this._nextId || 4;
-      return this._nextId++;
+    componentDidMount(){
+        axios.get('/api/todos')
+        .then(response => response.data)
+        .then(todos=>this.setState({todos}))
+        .catch(error=>this.handleError);
     }
 
-    handleStatusChange(id){
-        let todos=this.state.todos.map(todo=>{
-          if(todo.id===id){
-            todo.completed=!todo.completed;
-          }
+    handleAdd(title) {
+        axios.post('/api/todos',{title})
+                    .then(response=>response.data)
+                    .then(todo=>{
+                        const todos=[...this.state.todos, todo];
+                        this.setState({todos});
+                    })
+                    .catch(this.handleError);
+        } 
 
-          return todo;
-        });
-
-        this.setState({
-          todos:todos
+    handleDelete(id) {
+        axios.delete(`/api/todos/${id}`)
+        .then(()=>{
+            const todos = this.state.todos.filter(todo => todo.id !== id);            
+            this.setState({ todos });
         })
+        .catch(this.handleError);
+       
+    }
+
+    handleToggle(id) {
+        axios.patch(`/api/todos/${id}`)
+        .then(response=>{
+            const todos = this.state.todos.map(todo => {
+                if (todo.id === id) {
+                    todo.completed = response.data;
+                }    
+                return todo;
+            });
+    
+            this.setState({ todos });
+        })
+        .catch(this.handleError);
 
         
     }
 
-    handleAdd(title){
-      let todo={
-        id:this.nextId(),
-        title,
-        completed:false
-      }
-      let todos=[...this.state.todos, todo];
-      this.setState({todos});
-    }
-
-    handleDelete(id){
-      let todos=this.state.todos.filter(todo=>todo.id !== id);
-      this.setState({
-        todos:todos
-      })
-    }
-
-    handleEdit(id,title){
-        let todos=this.state.todos.map(todo=>{
-          if(todo.id==id){
-            todo.title=title;
-          }
-          return todo;
+    handleEdit(id, title) {
+        axios.put(`/api/todos/${id}`,{title})
+        .then(response => {
+            const todos = this.state.todos.map(todo => {
+                if (todo.id === id) {
+                    todo = response.data;
+                }
+    
+                return todo;
+            });
+    
+            this.setState({ todos });
         })
-
-        this.setState({todos});
+        .catch(this.handleError);        
     }
 
-    render(){
-      return (
-        <main>
-         <Header title={this.props.title} todos={this.state.todos}/>
-          <section className="todo-list">     
-          {
-              this.state.todos.map(
-                  todo=><Todo
-                  key={todo.id}
-                  id={todo.id}
-                  title={todo.title}
-                  completed={todo.completed}
-                  onStatusChange={this.handleStatusChange}
-                  onDelete={this.handleDelete}
-                  onEdit={this.handleEdit}
-                  />
-                )
-            }          
-         
-          </section>
-          <Form onAdd={this.handleAdd}/>
-        </main>
-      )
+    handleError(error){
+        console.error(error);
+    }
+
+    render() {
+        return (
+            <main>
+                <Header todos={this.state.todos} />
+
+                <section className="todo-list">
+                    {this.state.todos.map(todo => 
+                        <Todo
+                            key={todo.id}
+                            id={todo.id}
+                            title={todo.title}
+                            completed={todo.completed}
+                            onDelete={this.handleDelete}
+                            onToggle={this.handleToggle}
+                            onEdit={this.handleEdit}
+                        />)
+                    }
+                </section>
+
+                <Form onAdd={this.handleAdd} />
+            </main>
+        );
     }
 }
 
-function App(props) {    
-  
-}
+App.propTypes = {
+    initialData: React.PropTypes.arrayOf(React.PropTypes.shape({
+        id: React.PropTypes.number.isRequired,
+        title: React.PropTypes.string.isRequired,
+        completed: React.PropTypes.bool.isRequired
+    })).isRequired
+};
 
-App.propTypes={
-    title:React.PropTypes.string,
-    initialData:React.PropTypes.arrayOf(
-        React.PropTypes.shape(
-            {
-                id:React.PropTypes.number.isRequired,
-                title:React.PropTypes.string.isRequired,
-                completed:React.PropTypes.bool.isRequired
-            }
-        )
-    ).isRequired
-}
-
-ReactDOM.render(
-  <App title={"React Todo"} initialData={todos}/>, document.getElementById('root')
-);
+ReactDOM.render(<App initialData={todos} />, document.getElementById('root'));

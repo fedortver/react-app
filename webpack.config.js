@@ -28,6 +28,12 @@ module.exports = {
 
     devtool: 'cheap-eval-source-map',
     
+    devServer:{
+        proxy:{
+            "/api":"http://localhost:3000"
+        }
+    },
+
     resolve: {
         extensions: ['.js', '.jsx', '.json', '*']
     }
